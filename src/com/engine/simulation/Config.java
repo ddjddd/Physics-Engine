@@ -9,4 +9,7 @@ public final class Config {
 	public static double delT = 0.1;				//시간간격(delta t)
 	public static double STOP_POSITION = 1d;		//최소 정지 조건(position)
 	public static double STOP_VELOCITY = 1d;		//최소 정지 조건(velocity)
+	
+	public static double DP_WIDTH  = 800; // 물리엔진 크기(수정 필요)
+	public static double DP_HEIGHT = 550;
 }

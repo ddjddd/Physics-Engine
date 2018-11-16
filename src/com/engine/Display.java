@@ -44,6 +44,7 @@ public class Display extends Canvas implements Runnable{
 	// Things
 	public static ArrayList<Thing> thing = new ArrayList<Thing>();
 	
+	// Thread 시작
 	private void start() {
 		if (running) 
 			return;
@@ -51,12 +52,14 @@ public class Display extends Canvas implements Runnable{
 		mainThread = new Thread(this);
 		mainThread.start();
 		
+		// 엔진 구동 thread
 		freeFallEngine = new FreeFallEngine();
 		freeFallEngine.start();
 		
 		System.out.println("Engine Working");
 	}
 	
+	// Thread 종료시
 	private void stop() {
 		if (!running) 
 			return;
@@ -70,7 +73,9 @@ public class Display extends Canvas implements Runnable{
 		
 		System.out.println("Engine Terminated");
 	}
-		
+	
+
+	// 프로그램 초기화
 	private static void initialize() {
 		Display display = new Display();
 		JFrame frame = new JFrame();
@@ -78,7 +83,6 @@ public class Display extends Canvas implements Runnable{
 		frame.pack();
 		frame.setTitle(TITLE);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-//		frame.setLocationRelativeTo(null);
 		frame.setSize(WIDTH, HEIGHT);
 		frame.setResizable(false);
 		frame.setVisible(true);
@@ -97,11 +101,23 @@ public class Display extends Canvas implements Runnable{
 		
 		System.out.println("Initialized");
 		
-		thing.add(new Thing("test",
-												new Vec2d(400, 100),
+		// 원 생성 _ 추후 삭제
+		thing.add(new Circle("test",
+												new Vec2d(400, 0),
+												new Vec2d(20, 0),
 												new Vec2d(0, 0),
-												new Vec2d(0, 0),
-												100));
+												100, 20));
+		thing.add(new Circle("test",
+				new Vec2d(300, 0),
+				new Vec2d(-20, 0),
+				new Vec2d(0, 0),
+				100, 20));
+		thing.add(new Circle("test",
+				new Vec2d(600, 0),
+				new Vec2d(0, 0),
+				new Vec2d(0, 0),
+				100, 20));
+
 		
 		display.start();
 	}
@@ -116,8 +132,10 @@ public class Display extends Canvas implements Runnable{
 		long curTime = System.currentTimeMillis();
 		long lastTime = curTime;
 		
+		// 엔진 구동 중 에니메이션 디스플레이
 		while(running) {
 			try {
+				// 시간 계산
 				lastTime = curTime;
 				curTime = System.currentTimeMillis();
 				totalTime += curTime - lastTime;
@@ -127,27 +145,24 @@ public class Display extends Canvas implements Runnable{
 					fps = frames;
 					frames = 0;
 				}
+
 				frames++;
+
 				g2d = buffer.createGraphics();
 		        g2d.setColor(Color.WHITE);
 		        g2d.fillRect(0, 0, WIDTH, HEIGHT);
 		        
-		        // Draw entities
+		        // Draw things
 		        for (int i = 0; i < thing.size(); i++) {
 		          at = new AffineTransform();
 		          at.translate(thing.get(i).posX(), thing.get(i).posY());
 		          g2d.setColor(Color.BLACK);
 		          Thing t = thing.get(i);
-		          g2d.fill(new Ellipse2D.Double(t.posX(), t.posY(), t.getRadius() * 2, t.getRadius() * 2));
+		          g2d.fill(new Ellipse2D.Double(t.posX(), t.posY(), t.getDim(), t.getDim()));
 		        }
-		        // display frames per second..
-
-		        g2d.setFont(new Font("Courier New", Font.PLAIN, 12));
-		        g2d.setColor(Color.GREEN);
-		        g2d.drawString(String.format("FPS: %s", fps), 20, 20);
 		        
-//		         Blit image and flip...
-		        g = bs.getDrawGraphics();
+
+				g = bs.getDrawGraphics();
 		        g.drawImage(buffer, 0, 0, null);
 		        if (!bs.contentsLost()) bs.show();
 		        // Let the OS have a little time...
