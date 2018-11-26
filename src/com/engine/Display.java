@@ -2,33 +2,30 @@ package com.engine;
 
 import java.awt.Canvas;
 import java.awt.Color;
-import java.awt.Font;
+//import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 
 import javax.swing.JFrame;
 
-import java.util.ArrayList;
+import com.engine.simulation.Config;
+import com.engine.simulation.EngineThread;
+import com.engine.simulation.Manager;
+import com.engine.simulation.Vec2d;
+import com.engine.thing.*;
+import com.engine.wall.*;
 
-import com.engine.simulation.*;
 
-
-public class Display extends Canvas implements Runnable{
-	// Display
-	public static final int WIDTH = 800;
-	public static final int HEIGHT = 600;
-	public static final String TITLE = "Engine  v.0.1";
-	
+public class Display extends Canvas implements Runnable, Config {
 	// Threads
 	private Thread mainThread;
-	private Thread freeFallEngine;
+	private Thread engineThread;
 	public static boolean running = false;
 	
 	// Graphics 
@@ -40,11 +37,11 @@ public class Display extends Canvas implements Runnable{
 	private static GraphicsConfiguration gc;
 	private static GraphicsDevice gd;
 	private static GraphicsEnvironment ge;
-		
-	// Things
-	public static ArrayList<Thing> thing = new ArrayList<Thing>();
 	
-	// Thread 시작
+	// Things
+	public static Manager manager;
+	
+	// Thread start
 	private void start() {
 		if (running) 
 			return;
@@ -52,95 +49,33 @@ public class Display extends Canvas implements Runnable{
 		mainThread = new Thread(this);
 		mainThread.start();
 		
-		// 엔진 구동 thread
-		freeFallEngine = new FreeFallEngine();
-		freeFallEngine.start();
+		// ���� ���� thread
+		engineThread = new EngineThread();
+		engineThread.start();
 		
-		System.out.println("Engine Working");
+		System.out.println("Engine Thread Working\n");
 	}
 	
-	// Thread 종료시
-	private void stop() {
-		if (!running) 
-			return;
-		running = false;
-		try {
-			mainThread.join();
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.exit(0);
-		}
-		
-		System.out.println("Engine Terminated");
-	}
-	
-
-	// 프로그램 초기화
-	private static void initialize() {
-		Display display = new Display();
-		JFrame frame = new JFrame();
-		frame.add(display);
-		frame.pack();
-		frame.setTitle(TITLE);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setSize(WIDTH, HEIGHT);
-		frame.setResizable(false);
-		frame.setVisible(true);
-		
-		System.out.println("Running...");
-		
-		// Get graphics configuration...
-	    ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-	    gd = ge.getDefaultScreenDevice();
-	    gc = gd.getDefaultConfiguration();
-	    // Create off-screen drawing surface
-	   buffer = gc.createCompatibleImage(WIDTH, HEIGHT);
-	    // Objects needed for rendering...
-	    g = null;
-	    g2d = null;
-		
-		System.out.println("Initialized");
-		
-		// 원 생성 _ 추후 삭제
-		thing.add(new Circle("test",
-												new Vec2d(400, 0),
-												new Vec2d(20, 0),
-												new Vec2d(0, 0),
-												100, 20));
-		thing.add(new Circle("test",
-				new Vec2d(300, 0),
-				new Vec2d(-20, 0),
-				new Vec2d(0, 0),
-				100, 20));
-		thing.add(new Circle("test",
-				new Vec2d(600, 0),
-				new Vec2d(0, 0),
-				new Vec2d(0, 0),
-				100, 20));
-
-		
-		display.start();
-	}
-	
+	// Thread running
 	public void run() {
+		int fps = 0;
+	    int frames = 0;
+	    
 		createBufferStrategy(2);
 		bs = this.getBufferStrategy();
 		
-		int fps = 0;
-		int frames = 0;
 		long totalTime = 0;
 		long curTime = System.currentTimeMillis();
 		long lastTime = curTime;
 		
-		// 엔진 구동 중 에니메이션 디스플레이
 		while(running) {
 			try {
-				// 시간 계산
+				// �ð� ���
 				lastTime = curTime;
 				curTime = System.currentTimeMillis();
 				totalTime += curTime - lastTime;
 				
-				if(totalTime > 1000) {
+				if(totalTime > 100000) {
 					totalTime -= 1000;
 					fps = frames;
 					frames = 0;
@@ -149,21 +84,9 @@ public class Display extends Canvas implements Runnable{
 				frames++;
 
 				g2d = buffer.createGraphics();
-		        g2d.setColor(Color.WHITE);
-		        g2d.fillRect(0, 0, WIDTH, HEIGHT);
+				
+				create_graphics();
 		        
-		        // Draw things
-		        for (int i = 0; i < thing.size(); i++) {
-		          at = new AffineTransform();
-		          at.translate(thing.get(i).posX(), thing.get(i).posY());
-		          g2d.setColor(Color.BLACK);
-		          Thing t = thing.get(i);
-		          g2d.fill(new Ellipse2D.Double(t.posX(), t.posY(), t.getDim(), t.getDim()));
-		        }
-		        
-
-				g = bs.getDrawGraphics();
-		        g.drawImage(buffer, 0, 0, null);
 		        if (!bs.contentsLost()) bs.show();
 		        // Let the OS have a little time...
 		        Thread.sleep(15);
@@ -175,6 +98,98 @@ public class Display extends Canvas implements Runnable{
 			}
 			
 		}
+	}
+	
+	// Thread ends
+	private void stop() {
+		if (!running) 
+			return;
+		running = false;
+		try {
+			mainThread.join();
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(0);
+		}
+		
+		System.out.println("Engine Thread Terminated");
+	}
+	
+
+	// Initialize entire program
+	private static void initialize() {
+		System.out.println(TITLE);
+		manager = Manager.getInstance();
+		Display display = new Display();
+		JFrame frame = new JFrame();
+		frame.add(display);
+		frame.pack();
+		frame.setTitle(TITLE);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setSize(DP_WIDTH, DP_HEIGHT);
+		frame.setResizable(false);
+		frame.setVisible(true);
+		
+		System.out.println("Display Running...");
+		
+		// Get graphics configuration...
+	    ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+	    gd = ge.getDefaultScreenDevice();
+	    gc = gd.getDefaultConfiguration();
+	    // Create off-screen drawing surface
+	   buffer = gc.createCompatibleImage(DP_WIDTH, DP_HEIGHT);
+	    // Objects needed for rendering...
+	    g = null;
+	    g2d = null;
+		
+		System.out.println("Objects Initialized");
+		
+		Vec2d gravitionalAcc = new Vec2d(0, Config.GRAVITY);
+
+		// Add thing
+		manager.addThing(new Circle("A", new Vec2d(100, 20), new Vec2d(50, 10), gravitionalAcc, 70, 15, 0.01f));
+		manager.addThing(new Rectangle("C", new Vec2d(300, 20), new Vec2d( 120,  10), gravitionalAcc, 70, 15, 60, 0.01f));
+		manager.addThing(new Circle("D", new Vec2d(400, 40), new Vec2d( 140, -10), gravitionalAcc, 70, 25, 0.01f));
+		manager.addThing(new Rectangle("E", new Vec2d(500, 400), new Vec2d(-160,  -80), gravitionalAcc, 70, 30, 10, 0.01f));
+
+		// Add walls
+		manager.addWall(new HorizontalWall("y = " + DP_BOTTOM, DP_BOTTOM));
+		manager.addWall(new VerticalWall("x = 0", 0));
+		manager.addWall(new VerticalWall("x = " + DP_RIGHT, DP_RIGHT));
+
+		display.start();
+	}
+	
+	private void create_graphics () {
+		
+		at = new AffineTransform();
+        Thing t;
+        Wall w;
+        
+		int numOfThings, numOfWalls;
+		g2d.setColor(Color.WHITE);
+        g2d.fillRect(0, 0, DP_WIDTH, DP_HEIGHT);
+        // Draw things
+        numOfThings = manager.getNumberOfThings();
+        g2d.setColor(Color.BLACK);
+        for (int i = 0; i < numOfThings; i++) {
+        	t = manager.getThing(i);
+        	at.translate(t.posX(), t.posY());
+        	float theta = t.calc_theta();
+        	g2d.rotate(Math.toDegrees(theta), t.posX(), t.posY());		// rotate entire coordinate
+        	g2d.fill((t.fillShape()));
+        	g2d.rotate(-Math.toDegrees(theta), t.posX(), t.posY()); 		// rotate entire coordinate in reverse
+        }
+        
+        // Draw Walls
+        numOfWalls = manager.getNumberOfWalls();
+        for(int i=0; i<numOfWalls; i++) {
+        	w = manager.getWall(i);
+        	g2d.draw(w.drawShape());
+        }
+        
+		g = bs.getDrawGraphics();
+        g.drawImage(buffer, 0, 0, null);
 	}
 	
 	public static void main (String[] args) {
